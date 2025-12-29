@@ -12,6 +12,7 @@
 
 .dataset-map #dataset-map-container{
   height: 250px;
+  z-index: 0;
 }
 
 #dataset-map-attribution{
