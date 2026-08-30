@@ -1,0 +1,24 @@
+# ckanext-spatial -- CKAN-load + unit-test harness.
+#
+# Installs the plugin into a real CKAN 2.10 dev image to (a) smoke-check that
+# the search backends import and still share SpatialSearchBackend and (b) run
+# the geometry-parsing unit tests.
+#
+# NOTE: the plugin source is COPYied (not bind-mounted) on purpose - bind
+# mounts fail under SELinux. See scripts/run-ckan-tests.sh for the driver.
+
+FROM ckan/ckan-dev:2.10
+
+USER root
+
+COPY . /plugin
+
+# setup.py declares an empty install_requires, so `pip install -e` pulls in
+# nothing: the runtime deps have to be named here. Shapely is pinned to the
+# same version the production image installs (see the ckan-unesco-docker
+# Dockerfile) so the tests exercise the geometry code the portal actually
+# runs. geojson and lxml are what ckanext.spatial.plugin imports at module
+# level, which the smoke check below needs.
+RUN pip install --only-binary=:all: "Shapely==2.1.0" "geojson==3.0.1" lxml
+
+RUN pip install -e /plugin
