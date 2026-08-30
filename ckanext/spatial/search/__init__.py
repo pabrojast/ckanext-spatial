@@ -21,12 +21,23 @@ class SpatialSearchBackend:
 
     def parse_geojson(self, geom_from_metadata):
 
+        # CKAN copies every extra to the top level of the dict it indexes, so
+        # any IPackageController ordered before us can replace the `spatial`
+        # string with the parsed mapping. ckanext-schemingdcat does exactly
+        # that to every schema field that holds JSON, so accept a geometry
+        # that has already been deserialized.
+        if isinstance(geom_from_metadata, dict):
+            return geom_from_metadata
+
         try:
             geometry = json.loads(geom_from_metadata)
-        except (AttributeError, ValueError) as e:
+        except (AttributeError, TypeError, ValueError) as e:
+            # repr() rather than a slice: the value can be of a type that
+            # cannot be sliced at all, which would raise a second error from
+            # inside this handler.
             log.error(
                 "Geometry not valid JSON {}, not indexing :: {}".format(
-                    e, geom_from_metadata[:100]
+                    e, repr(geom_from_metadata)[:100]
                 )
             )
             return None
@@ -55,6 +66,9 @@ class SolrBBoxSearchBackend(SpatialSearchBackend):
             return dataset_dict
 
         geometry = self.parse_geojson(geom_from_metadata)
+        if not geometry:
+            return dataset_dict
+
         shape = self.shape_from_geometry(geometry)
 
         if not shape:
